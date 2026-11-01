@@ -58,17 +58,31 @@ export async function startView(host: Host, signal: AbortSignal): Promise<ViewHa
   const hud=make('div','rally-hud'),ghostPreview=make('div','rally-ghost','Ghost: no completed lap'),warning=make('div','rally-warning'),status=make('div','app-status');
   warning.hidden=true;warning.setAttribute('role','status');status.setAttribute('role','status');
   const controls=make('div','rally-controls');
-  const holdButton=(label:string,down:()=>void,up:()=>void):HTMLButtonElement=>{
+  type Control='left'|'right'|'gas'|'brake';
+  const keys=new Set<string>();
+  const pointers:Record<Control,Set<number>>={left:new Set(),right:new Set(),gas:new Set(),brake:new Set()};
+  const pulses=new Set<Control>(),pulseTimers=new Map<Control,ReturnType<typeof setTimeout>>();
+  const syncInputs=():void=>{
+    const active=(control:Control,...keyboard:string[])=>pointers[control].size>0||pulses.has(control)||keyboard.some(key=>keys.has(key));
+    session.setSteer(Number(active('right','arrowright','d'))-Number(active('left','arrowleft','a')));
+    session.setThrottle(active('gas','arrowup','w',' '));session.setBrake(active('brake','arrowdown','s','shift'));
+  };
+  const clearInputs=():void=>{
+    keys.clear();Object.values(pointers).forEach(ids=>ids.clear());pulses.clear();
+    pulseTimers.forEach(timer=>clearTimeout(timer));pulseTimers.clear();syncInputs();
+  };
+  const holdButton=(label:string,control:Control):HTMLButtonElement=>{
     const button=textButton(label,()=>{});button.setAttribute('aria-label',label);
-    button.addEventListener('pointerdown',event=>{if(event.button!==0)return;event.preventDefault();button.setPointerCapture(event.pointerId);down()});
-    for(const name of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(name,up);
-    button.addEventListener('click',event=>{if(event.detail===0){down();setTimeout(up,120)}});
+    button.addEventListener('pointerdown',event=>{if(event.button!==0||paused||busy||!valid())return;event.preventDefault();button.setPointerCapture(event.pointerId);pointers[control].add(event.pointerId);syncInputs()});
+    const release=(event:PointerEvent)=>{pointers[control].delete(event.pointerId);syncInputs()};
+    button.addEventListener('pointerup',release);button.addEventListener('pointercancel',release);button.addEventListener('lostpointercapture',release);
+    button.addEventListener('click',event=>{if(event.detail!==0||paused||busy||!valid())return;clearTimeout(pulseTimers.get(control));pulses.add(control);syncInputs();pulseTimers.set(control,setTimeout(()=>{pulses.delete(control);pulseTimers.delete(control);syncInputs()},120))});
     controls.append(button);return button;
   };
-  holdButton('◀ Steer left',()=>session.setSteer(-1),()=>session.setSteer(0));
-  holdButton('Steer right ▶',()=>session.setSteer(1),()=>session.setSteer(0));
-  holdButton('Gas',()=>session.setThrottle(true),()=>session.setThrottle(false));
-  holdButton('Brake',()=>session.setBrake(true),()=>session.setBrake(false));
+  holdButton('◀ Steer left','left');
+  holdButton('Steer right ▶','right');
+  holdButton('Gas','gas');
+  holdButton('Brake','brake');
 
   const settings=document.createElement('details'),settingsSummary=make('summary','','Settings'),settingsRow=make('div','rally-settings-row');
   const soundLabel=make('label','','Sound '),sound=document.createElement('input'),volumeLabel=make('label','','Volume '),volume=document.createElement('input'),ghostLabel=make('label','','Ghost opacity '),ghostOpacity=document.createElement('input'),contrastLabel=make('label','','Contrast '),contrast=document.createElement('select'),motionLabel=make('label','','Motion '),motion=document.createElement('select');
@@ -104,11 +118,11 @@ export async function startView(host: Host, signal: AbortSignal): Promise<ViewHa
     if(busy||!valid())return;
     if(session.finished){restartSession();return}
     paused=!paused;audio.setMuted(!sound.checked);if(!paused&&sound.checked)audio.unlock();
-    if(!paused){audio.resume()}else audio.suspend();
+    if(!paused){audio.resume()}else{clearInputs();audio.suspend()}
     announce(paused?'Race paused.':'Race running.');refresh();stage.focus({preventScroll:true});
   }
   function restartSession():void{
-    const previousBest=structuredClone(session.bestLaps),previousMedals=[...session.medals];
+    clearInputs();const previousBest=structuredClone(session.bestLaps),previousMedals=[...session.medals];
     session=new RallySession(`rally-${crypto.randomUUID()}`,Number(trackSelect.value));session.handlingPreset=handlingSelect.value==='2'?2:1;
     session.bestLaps=previousBest;session.medals=previousMedals;
     paused=true;mark();savedPath=null;savedVersion=null;if(host.w)delete host.w.launchContext;
@@ -120,7 +134,7 @@ export async function startView(host: Host, signal: AbortSignal): Promise<ViewHa
     if(windowState.dirty&&!await host.ui.confirm('Reset to the start line and add a penalty?',{title:'Reset car',confirmLabel:'Reset',cancelLabel:'Cancel',danger:true,signal}))return;
     if(!valid())return;
     if(revision!==before||encodeSave(session)!==beforeSave){announce('The race changed while confirming; try again.');return}
-    session.resetCar();paused=true;audio.suspend();mark();announce('Car reset. A three-second penalty was added.');refresh();
+    clearInputs();session.resetCar();paused=true;audio.suspend();mark();announce('Car reset. A three-second penalty was added.');refresh();
   }
   async function chooseTrack():Promise<void>{
     if(busy||!valid())return;
@@ -144,7 +158,7 @@ export async function startView(host: Host, signal: AbortSignal): Promise<ViewHa
   }
   async function save():Promise<void>{
     if(busy||!valid())return;
-    busy=true;saveButton.disabled=true;paused=true;audio.suspend();refresh();
+    busy=true;saveButton.disabled=true;paused=true;clearInputs();audio.suspend();refresh();
     const wasDirty=windowState.dirty,capturedRevision=revision,text=encodeSave(session),requested=path.value;
     let committed=false;
     windowState.dirty=true;
@@ -172,7 +186,7 @@ export async function startView(host: Host, signal: AbortSignal): Promise<ViewHa
   }
   async function open(selected?:string):Promise<void>{
     if(busy||!valid())return;
-    busy=true;openButton.disabled=true;paused=true;audio.suspend();refresh();
+    busy=true;openButton.disabled=true;paused=true;clearInputs();audio.suspend();refresh();
     const before=revision,beforeSave=encodeSave(session),unchanged=()=>revision===before&&encodeSave(session)===beforeSave;
     try{
       if(windowState.dirty&&!await host.ui.confirm('Open a saved rally and discard current progress?',{title:'Unsaved race',confirmLabel:'Discard progress',cancelLabel:'Keep race',danger:true,signal})){announce('Race remains paused.');return}
@@ -212,22 +226,22 @@ export async function startView(host: Host, signal: AbortSignal): Promise<ViewHa
     const x=CENTER_X+session.position.x*SCALE,y=CENTER_Y+session.position.y*SCALE;
     graphics.fillStyle(high?0xffffff:0xe85c5c,1);graphics.fillTriangle(x-Math.cos(session.heading)*12,y-Math.sin(session.heading)*12,x+Math.cos(session.heading+2.5)*10,y+Math.sin(session.heading+2.5)*10,x+Math.cos(session.heading-2.5)*10,y+Math.sin(session.heading-2.5)*10);
   };
-  const keys=new Set<string>();
   const keyboard=(event:KeyboardEvent):void=>{
     if(event.target instanceof HTMLInputElement||event.target instanceof HTMLSelectElement)return;
     const key=event.key.toLowerCase();if(!['arrowleft','arrowright','arrowup','arrowdown','a','d','w','s',' ','shift','escape'].includes(key))return;
-    event.preventDefault();keys.add(key);
-    if(key==='escape'){toggleRun();return}
-    syncKeys();if(!paused&&!session.finished&&['arrowup','arrowdown','a','d','w','s',' ','shift'].includes(key))mark();
+    event.preventDefault();
+    if(key==='escape'){if(!event.repeat)toggleRun();return}
+    if(paused||busy)return;
+    keys.add(key);syncInputs();if(!session.finished)mark();
   };
-  const keyup=(event:KeyboardEvent):void=>{keys.delete(event.key.toLowerCase());syncKeys()};
-  const syncKeys=():void=>{session.setSteer((keys.has('arrowleft')||keys.has('a')?-1:0)+(keys.has('arrowright')||keys.has('d')?1:0));session.setThrottle(keys.has('arrowup')||keys.has('w')||keys.has(' '));session.setBrake(keys.has('arrowdown')||keys.has('s')||keys.has('shift'))};
-  stage.addEventListener('keydown',keyboard);stage.addEventListener('keyup',keyup);
+  const keyup=(event:KeyboardEvent):void=>{keys.delete(event.key.toLowerCase());syncInputs()};
+  const stageBlur=():void=>{keys.clear();syncInputs()};
+  stage.addEventListener('keydown',keyboard);stage.addEventListener('keyup',keyup);stage.addEventListener('blur',stageBlur);
   trackSelect.addEventListener('change',()=>void chooseTrack());
   handlingSelect.addEventListener('change',()=>{session.handlingPreset=handlingSelect.value==='2'?2:1;mark();refresh()});
   sound.addEventListener('change',()=>{volume.disabled=!sound.checked;audio.setMuted(!sound.checked);if(sound.checked&&!paused)audio.unlock()});
   volume.addEventListener('input',()=>{audio.setVolume(Number(volume.value)/100);if(!paused&&sound.checked)audio.tone(440,30)});
-  const suspend=():void=>{if(!valid())return;keys.clear();syncKeys();paused=true;audio.suspend();announce('Race paused when its window lost attention.');refresh()};
+  const suspend=():void=>{if(!valid())return;clearInputs();paused=true;audio.suspend();announce('Race paused when its window lost attention.');refresh()};
   const visibility=()=>{if(document.hidden)suspend()};
   const watchWindow=():void=>{
     const target=element.closest<HTMLElement>('.window');
@@ -248,5 +262,5 @@ export async function startView(host: Host, signal: AbortSignal): Promise<ViewHa
     loader();
   });
   refresh();
-  return{element,dispose(){if(disposed)return;disposed=true;cancelAnimationFrame(frame);clearWatch();windowObserver?.disconnect();windowObserver=null;observedWindow=null;stage.removeEventListener('keydown',keyboard);stage.removeEventListener('keyup',keyup);window.removeEventListener('blur',suspend);document.removeEventListener('visibilitychange',visibility);audio.dispose();game?.destroy(true);game=null;graphics=null;}};
+  return{element,dispose(){if(disposed)return;disposed=true;cancelAnimationFrame(frame);clearWatch();windowObserver?.disconnect();windowObserver=null;observedWindow=null;stage.removeEventListener('keydown',keyboard);stage.removeEventListener('keyup',keyup);stage.removeEventListener('blur',stageBlur);clearInputs();window.removeEventListener('blur',suspend);document.removeEventListener('visibilitychange',visibility);audio.dispose();game?.destroy(true);game=null;graphics=null;}};
 }

@@ -31,13 +31,17 @@ npm test --prefix apps/system/pocket-rally
 node tests/pocket-rally-browser.test.mjs
 CODI_PHONE=1 node tests/pocket-rally-browser.test.mjs
 node tests/pocket-rally-account.test.mjs
+node tests/pocket-rally-input-review.test.mjs
 ```
 
 The browser fixture was checked at desktop and 412x915 emulated-phone sizes.
 It covers driving input, focus pause/resume, save, malformed-file recovery,
 independent windows, and idempotent disposal. The account test covers server
 sync, Files-route reopening, phone reload, paused restore, and account
-isolation once the parent desktop registers the app.
+isolation once the parent desktop registers the app. The input review test uses
+an isolated account-backed preview and checks that a held accelerator is released
+when the track loses focus and that emulated phone touch drives the car. It does
+not replace testing simultaneous touches on a physical phone.
 
 ## Remaining gates
 
