@@ -1,0 +1,121 @@
+{
+  "category": "01-phaser-arcade",
+  "id": "pocket-rally",
+  "title": "Pocket Rally",
+  "genre": "Top-down single-player racing",
+  "pitch": "Three tiny circuits built for time trials, visible racing lines and a local best-lap ghost.",
+  "capabilities": [
+    "Camera follow and layered track rendering",
+    "Simple arcade vehicle kinematics",
+    "Local ghost replay and HUD animation"
+  ],
+  "rules": [
+    "Steer, accelerate and brake a top-down car. Race three laps; gates must be crossed in order and direction.",
+    "Offroad slows the car; reset-to-track adds a penalty. No damage economy or multiplayer.",
+    "Ghost is a recorded pose trace of a completed valid lap, not a simulated opponent."
+  ],
+  "content": "Three original tracks, time trial and medal targets, one car with two handling presets.",
+  "state": [
+    "track id and handling preset",
+    "race checkpoint/progress policy",
+    "best laps and validated pose traces",
+    "settings",
+    "medals"
+  ],
+  "actions": [
+    {
+      "command": "steer",
+      "desktop": "Left/right / A/D",
+      "phone": "Thumb slider or left/right buttons",
+      "xr": "Not applicable; plays as a flat browser app."
+    },
+    {
+      "command": "accelerate",
+      "desktop": "Up/W",
+      "phone": "Auto-throttle default or held pedal",
+      "xr": "Not applicable; plays as a flat browser app."
+    },
+    {
+      "command": "brake",
+      "desktop": "Down/S",
+      "phone": "Large brake button",
+      "xr": "Not applicable; plays as a flat browser app."
+    },
+    {
+      "command": "reset-car",
+      "desktop": "R",
+      "phone": "Reset button with penalty notice",
+      "xr": "Not applicable; plays as a flat browser app."
+    }
+  ],
+  "rive": {
+    "asset": "rally-dash.riv",
+    "role": "Speed gauge, lap banner and medal celebration inside the game UI.",
+    "properties": {
+      "speed": "number 0..1",
+      "lap": "integer 1..3",
+      "delta": "number"
+    },
+    "events": [
+      "lapComplete",
+      "offroad",
+      "medal"
+    ],
+    "states": [
+      "idle",
+      "race",
+      "result"
+    ],
+    "artboard": "Main",
+    "stateMachine": "Presentation",
+    "assetStatus": "to_author"
+  },
+  "polish": [
+    "Legible checkpoints and wrong-way indicator",
+    "No camera shake by default",
+    "Ghost opacity adjustable and never collidable"
+  ],
+  "tests": [
+    "Skipping or reversing a checkpoint cannot register a lap.",
+    "Ghost cannot affect collisions.",
+    "Brake/accelerator multi-touch works.",
+    "Reset applies penalty once.",
+    "Recorded ghost uses simulation timestamps.",
+    "Phone rotation does not stretch handling coordinates."
+  ],
+  "loop": [
+    "map controls to steering/throttle/brake",
+    "advance bounded-speed vehicle kinematics",
+    "test track boundaries and ordered gates",
+    "record ghost samples by simulation time",
+    "update lap result and Rive dashboard"
+  ],
+  "save": "Persistent progress and ghost data; active races resume at race start, clearly labeled.",
+  "wave": 3,
+  "specVersion": 1,
+  "status": "planned",
+  "implementation": "not_started",
+  "runtimeTests": "not_run",
+  "engine": "Phaser",
+  "singlePlayer": true,
+  "phoneRequired": true,
+  "mountContract": {
+    "export": "mount",
+    "synchronous": true,
+    "returns": [
+      "element",
+      "dispose"
+    ],
+    "productionEntry": "index.mjs",
+    "suppliedEntry": "index.pseudo.mjs"
+  },
+  "xrRequired": false,
+  "riveRequired": true,
+  "riveAssetIncluded": false,
+  "documentKind": "Persistent progress and ghost data; active races resume at race start, clearly labeled.",
+  "sources": [
+    "S01",
+    "S02",
+    "S03"
+  ]
+}
