@@ -25,9 +25,9 @@ pause the race.
 ## Tests
 
 ```sh
-npm ci --prefix apps/system/pocket-rally --ignore-scripts
-npm run typecheck --prefix apps/system/pocket-rally
-npm test --prefix apps/system/pocket-rally
+npm ci --prefix apps/games/01-phaser-arcade/pocket-rally --ignore-scripts
+npm run typecheck --prefix apps/games/01-phaser-arcade/pocket-rally
+npm test --prefix apps/games/01-phaser-arcade/pocket-rally
 node tests/pocket-rally-browser.test.mjs
 CODI_PHONE=1 node tests/pocket-rally-browser.test.mjs
 node tests/pocket-rally-account.test.mjs
