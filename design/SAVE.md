@@ -1,3 +1,5 @@
+> Original design reference from 2026-10-30. This describes intended behavior, not current implementation or qualification. The current app README is authoritative for status. Pseudocode and template JSON here are documentation, not build entries.
+
 # Save and load — Pocket Rally
 
 ## Promise shown to the user
@@ -12,7 +14,7 @@ Persistent progress and ghost data; active races resume at race start, clearly l
 - settings
 - medals
 
-Use the versioned envelope from [SAVE-LOAD.md](../../docs/SAVE-LOAD.md), app id `pocket-rally`, a content/rules version and any required engine fingerprint. Derived render positions, DOM, texture handles, Rive artboards and in-flight worker jobs are excluded. XR anchors, tracked poses and hardware identities are excluded.
+Use the versioned envelope from [SAVE-LOAD.md](../../../../../docs/games/design-reference/SAVE-LOAD.md), app id `pocket-rally`, a content/rules version and any required engine fingerprint. Derived render positions, DOM, texture handles, Rive artboards and in-flight worker jobs are excluded. XR anchors, tracked poses and hardware identities are excluded.
 
 Pause at a committed game boundary, cancel uncommitted input, capture only the documented snapshot/checkpoint and report what was actually written. A visible Save operation must not quietly write an older checkpoint without saying so. On load validate size, app/version, finite values, ids and invariants, prepare a replacement, then commit; failure leaves the current game intact. The game resumes paused with an explicit Resume.
 

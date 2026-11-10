@@ -49,3 +49,7 @@ No authored `rally-dash.riv` is supplied. The speed, lap and medal panel is a
 clearly labeled procedural fallback and does not close the Rive acceptance
 gate. Physical-phone driving, full medal runs and performance/thermal evidence
 remain unrun.
+
+## Design requirements
+
+The original [design brief, controls, save rules, artwork and acceptance plans](design/README.md) are retained as reference. They describe targets; the implementation and qualification status above takes precedence.
