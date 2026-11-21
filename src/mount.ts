@@ -53,7 +53,7 @@ export function mount(host: Host): MountResult {
   host.signal?.addEventListener('abort', abort, {once: true});
   if (host.signal?.aborted) abort();
   queueMicrotask(() => {
-    void import('./view/run.js').then(async ({startView}) => {
+    void import('./view/run.ts').then(async ({startView}) => {
       if (disposed || controller.signal.aborted) return;
       const candidate = await startView(host, controller.signal);
       if (disposed) {

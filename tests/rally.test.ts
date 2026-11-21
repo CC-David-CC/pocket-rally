@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "./test-shim.ts";
 import {
   RallySession,
   RESET_PENALTY_S,
@@ -6,7 +6,7 @@ import {
   decodeSave,
   encodeSave,
   sessionFromSave,
-} from "../src/model/rally.js";
+} from "../src/model/rally.ts";
 
 describe("RallySession rules", () => {
   it("a checkpoint can only advance in authored order", () => {

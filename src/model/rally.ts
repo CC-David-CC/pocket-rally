@@ -1,4 +1,4 @@
-import { Rng } from "./rng.js";
+import { Rng } from "./rng.ts";
 
 export const TICK_MS = 1000 / 60;
 export const MAX_SPEED = 12;
